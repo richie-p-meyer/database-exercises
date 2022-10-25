@@ -68,8 +68,8 @@ Supernatural
 -- Which albums had less than 20 million certified sales
 SELECT name
 FROM albums
-WHERE sales <= 20000000;
--- All of them (31)
+WHERE sales <= 20;
+-- Grease, Bad, Sgt. Pepper's, Dirty Dancing, Let's Talk, Dangerous, The Immaculate, Abbey Road, Born in the, Brothers in Arms, Titanic, Nevermind, The Wall
 
 /*
 All the albums with a genre of "Rock". Why do these query results not include albums with a genre of "Hard rock" or "Progressive rock"?
