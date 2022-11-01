@@ -56,35 +56,40 @@ SELECT salary,
     (SELECT stddev(salary) FROM salaries) AS zscore
 FROM salaries;
 */
-(SELECT salary,
-    (salary - (SELECT AVG(salary) FROM salaries))
-    /
-    (SELECT stddev(salary) FROM salaries) AS zscore
-FROM salaries)
 
-USE employees;
+DROP TABLE IF EXISTS noether_2019.overall_agg;
 
-DROP TABLE IF EXISTS noether_2019.dpt_avg_sal;
+CREATE TEMPORARY TABLE noether_2019.overall_agg AS (
+	SELECT AVG(salary) AS avg_salary, STD(salary) AS std_salary
+	 FROM employees.salaries
+	 WHERE to_date > NOW())
+	 
+SELECT *
+FROM noether_2019.overall_agg;
 
-CREATE TEMPORARY TABLE noether_2019.dpt_avg_sal(
-SELECT dept_name, avg(salary) avg_salary, stddev(salary) sal_std, 
-		avg((SELECT 
-    	(salary - (SELECT AVG(salary) FROM salaries))
-    	/
-    	(SELECT stddev(salary) FROM salaries) AS zscore
-		FROM salaries))
-FROM employees e
-JOIN salaries s USING (emp_no)
-JOIN dept_emp USING (emp_no)
-JOIN departments USING (dept_no)
-WHERE s.to_date>CURDATE()
-GROUP BY dept_name
+CREATE TEMPORARY TABLE noether_2019.metrics AS (
+	SELECT dept_name, AVG(salary) AS dept_average
+	FROM employees.salaries
+	JOIN employees.dept_emp USING (emp_no)
+	JOIN employees.departments USING (dept_no)
+	WHERE employees.dept_emp.to_date > NOW()
+	AND employees.salaries.to_date > NOW()
+	GROUP BY dept_name
 );
 
-ALTER TABLE noether_2019.dpt_avg_sal ADD zscore FLOAT;
-SELECT * FROM noether_2019.dpt_avg_sal;
+SELECT *
+FROM noether_2019.metrics;
 
-UPDATE noether_2019.dpt_avg_sal SET zscore = (avg_salary - (SELECT AVG(avg_salary) FROM noether_2019.dpt_avg_sal))/sal_std;
+ALTER TABLE noether_2019.metrics ADD overall_avg FLOAT (10,2);
+ALTER TABLE noether_2019.metrics ADD overall_std FLOAT (10,2);
+ALTER TABLE noether_2019.metrics ADD dept_zscore FLOAT (10,2);
 
+UPDATE noether_2019.metrics SET overall_avg = (SELECT avg_salary FROM noether_2019.overall_agg);
+UPDATE noether_2019.metrics SET overall_std = (SELECT std_salary FROM noether_2019.overall_agg);
+UPDATE noether_2019.metrics SET dept_zscore = (dept_average - overall_avg) / overall_std;
+
+SELECT *
+FROM noether_2019.metrics
+ORDER BY dept_zscore DESC;
 
 -- BONUS To your work with current salary zscores, determine the overall historic average departement average salary, the historic overall average, and the historic zscores for salary. Do the zscores for current department average salaries tell a similar or a different story than the historic department salary zscores?
